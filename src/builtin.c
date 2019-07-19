@@ -556,6 +556,14 @@ static jv sh_format(jv input, int allow_object_shallow) {
 
           assignments = jv_string_concat(assignments, k);
           assignments = jv_string_append_str(assignments, "=");
+
+          jv v_str = sh_format(v, 0);
+          if (jv_get_kind(v_str) != JV_KIND_STRING) {
+            jv_free(assignments);
+            jv_free(input);
+            jv_free(line);
+            return v_str;
+          }
           assignments = jv_string_concat(assignments, sh_format(v, 0));
 
           assignments = jv_string_append_str(assignments, "\n");
