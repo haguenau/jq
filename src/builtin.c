@@ -621,6 +621,32 @@ static jv f_format(jq_state *jq, jv input, jv fmt) {
         line = jv_string_concat(line, escape_string(x, "''\\''\0"));
         line = jv_string_append_str(line, "'");
         break;
+
+      case JV_KIND_OBJECT: {
+        int i = -1;
+        jv assignments;
+
+        while (1) {
+          assignments = jv_string("");
+
+          i = i < 0 ? jv_object_iter(x) : jv_object_iter_next(x, i);
+          if (!jv_object_iter_valid(x, i)) break;
+
+
+          jv k = jv_object_iter_key(x, i);
+          jv v = jv_object_iter_value(x, i);
+
+          assignments = jv_string_concat(assignments, k);
+          assignments = jv_string_append_str(assignments, "=");
+          // FIXME--doesn't do the right thing on strings
+          assignments = jv_string_concat(assignments, jv_dump_string(v, 0));
+          assignments = jv_string_append_str(assignments, "\n");
+          line = jv_string_concat(line, assignments);
+        }
+
+        jv_free(assignments);
+        break;
+      }
       }
 
       default:
