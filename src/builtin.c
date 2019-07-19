@@ -541,7 +541,7 @@ static jv sh_format(jv input, int allow_object_shallow) {
         if (!allow_object_shallow) {
           jv_free(input);
           jv_free(line);
-          return type_error(x, "deep can not be escaped for shell");
+          return type_error(x, "(deep) can not be escaped for shell");
         }
 
         while (1) {
@@ -556,8 +556,7 @@ static jv sh_format(jv input, int allow_object_shallow) {
 
           assignments = jv_string_concat(assignments, k);
           assignments = jv_string_append_str(assignments, "=");
-          // FIXME--doesn't do the right thing on strings
-          assignments = jv_string_concat(assignments, jv_dump_string(v, 0));
+          assignments = jv_string_concat(assignments, sh_format(v, 0));
 
           assignments = jv_string_append_str(assignments, "\n");
           line = jv_string_concat(line, assignments);
