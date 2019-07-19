@@ -515,24 +515,24 @@ static jv escape_string(jv input, const char* escapings) {
 
 static jv sh_format(jv input, int allow_object_shallow);
 static jv sh_format(jv input, int allow_object_shallow) {
-      if (jv_get_kind(input) != JV_KIND_ARRAY)
-      input = jv_array_set(jv_array(), 0, input);
-    jv line = jv_string("");
-    jv_array_foreach(input, i, x) {
-      if (i) line = jv_string_append_str(line, " ");
-      switch (jv_get_kind(x)) {
-      case JV_KIND_NULL:
-      case JV_KIND_TRUE:
-      case JV_KIND_FALSE:
-      case JV_KIND_NUMBER:
-        line = jv_string_concat(line, jv_dump_string(x, 0));
-        break;
+  if (jv_get_kind(input) != JV_KIND_ARRAY)
+    input = jv_array_set(jv_array(), 0, input);
+  jv line = jv_string("");
+  jv_array_foreach(input, i, x) {
+    if (i) line = jv_string_append_str(line, " ");
+    switch (jv_get_kind(x)) {
+    case JV_KIND_NULL:
+    case JV_KIND_TRUE:
+    case JV_KIND_FALSE:
+    case JV_KIND_NUMBER:
+      line = jv_string_concat(line, jv_dump_string(x, 0));
+      break;
 
-      case JV_KIND_STRING: {
-        line = jv_string_append_str(line, "'");
-        line = jv_string_concat(line, escape_string(x, "''\\''\0"));
-        line = jv_string_append_str(line, "'");
-        break;
+    case JV_KIND_STRING: {
+      line = jv_string_append_str(line, "'");
+      line = jv_string_concat(line, escape_string(x, "''\\''\0"));
+      line = jv_string_append_str(line, "'");
+      break;
 
       case JV_KIND_OBJECT: {
         int i = -1;
@@ -573,16 +573,16 @@ static jv sh_format(jv input, int allow_object_shallow) {
         jv_free(assignments);
         break;
       }
-      }
-
-      default:
-        jv_free(input);
-        jv_free(line);
-        return type_error(x, "can not be escaped for shell");
-      }
     }
 
-    return line;
+    default:
+      jv_free(input);
+      jv_free(line);
+      return type_error(x, "can not be escaped for shell");
+    }
+  }
+
+  return line;
 }
 
 static jv f_format(jq_state *jq, jv input, jv fmt) {
