@@ -513,6 +513,71 @@ static jv escape_string(jv input, const char* escapings) {
 
 }
 
+static jv sh_format(jv input, int allow_object_shallow);
+static jv sh_format(jv input, int allow_object_shallow) {
+      if (jv_get_kind(input) != JV_KIND_ARRAY)
+      input = jv_array_set(jv_array(), 0, input);
+    jv line = jv_string("");
+    jv_array_foreach(input, i, x) {
+      if (i) line = jv_string_append_str(line, " ");
+      switch (jv_get_kind(x)) {
+      case JV_KIND_NULL:
+      case JV_KIND_TRUE:
+      case JV_KIND_FALSE:
+      case JV_KIND_NUMBER:
+        line = jv_string_concat(line, jv_dump_string(x, 0));
+        break;
+
+      case JV_KIND_STRING: {
+        line = jv_string_append_str(line, "'");
+        line = jv_string_concat(line, escape_string(x, "''\\''\0"));
+        line = jv_string_append_str(line, "'");
+        break;
+
+      case JV_KIND_OBJECT: {
+        int i = -1;
+        jv assignments;
+
+        if (!allow_object_shallow) {
+          jv_free(input);
+          jv_free(line);
+          return type_error(x, "deep can not be escaped for shell");
+        }
+
+        while (1) {
+          assignments = jv_string("");
+
+          i = i < 0 ? jv_object_iter(x) : jv_object_iter_next(x, i);
+          if (!jv_object_iter_valid(x, i)) break;
+
+
+          jv k = jv_object_iter_key(x, i);
+          jv v = jv_object_iter_value(x, i);
+
+          assignments = jv_string_concat(assignments, k);
+          assignments = jv_string_append_str(assignments, "=");
+          // FIXME--doesn't do the right thing on strings
+          assignments = jv_string_concat(assignments, jv_dump_string(v, 0));
+
+          assignments = jv_string_append_str(assignments, "\n");
+          line = jv_string_concat(line, assignments);
+        }
+
+        jv_free(assignments);
+        break;
+      }
+      }
+
+      default:
+        jv_free(input);
+        jv_free(line);
+        return type_error(x, "can not be escaped for shell");
+      }
+    }
+
+    return line;
+}
+
 static jv f_format(jq_state *jq, jv input, jv fmt) {
   if (jv_get_kind(fmt) != JV_KIND_STRING) {
     jv_free(input);
@@ -603,60 +668,10 @@ static jv f_format(jq_state *jq, jv input, jv fmt) {
     return line;
   } else if (!strcmp(fmt_s, "sh")) {
     jv_free(fmt);
-    if (jv_get_kind(input) != JV_KIND_ARRAY)
-      input = jv_array_set(jv_array(), 0, input);
-    jv line = jv_string("");
-    jv_array_foreach(input, i, x) {
-      if (i) line = jv_string_append_str(line, " ");
-      switch (jv_get_kind(x)) {
-      case JV_KIND_NULL:
-      case JV_KIND_TRUE:
-      case JV_KIND_FALSE:
-      case JV_KIND_NUMBER:
-        line = jv_string_concat(line, jv_dump_string(x, 0));
-        break;
 
-      case JV_KIND_STRING: {
-        line = jv_string_append_str(line, "'");
-        line = jv_string_concat(line, escape_string(x, "''\\''\0"));
-        line = jv_string_append_str(line, "'");
-        break;
-
-      case JV_KIND_OBJECT: {
-        int i = -1;
-        jv assignments;
-
-        while (1) {
-          assignments = jv_string("");
-
-          i = i < 0 ? jv_object_iter(x) : jv_object_iter_next(x, i);
-          if (!jv_object_iter_valid(x, i)) break;
-
-
-          jv k = jv_object_iter_key(x, i);
-          jv v = jv_object_iter_value(x, i);
-
-          assignments = jv_string_concat(assignments, k);
-          assignments = jv_string_append_str(assignments, "=");
-          // FIXME--doesn't do the right thing on strings
-          assignments = jv_string_concat(assignments, jv_dump_string(v, 0));
-          assignments = jv_string_append_str(assignments, "\n");
-          line = jv_string_concat(line, assignments);
-        }
-
-        jv_free(assignments);
-        break;
-      }
-      }
-
-      default:
-        jv_free(input);
-        jv_free(line);
-        return type_error(x, "can not be escaped for shell");
-      }
-    }
+    jv lines = sh_format(input, 1);
     jv_free(input);
-    return line;
+    return lines;
   } else if (!strcmp(fmt_s, "base64")) {
     jv_free(fmt);
     input = f_tostring(jq, input);
